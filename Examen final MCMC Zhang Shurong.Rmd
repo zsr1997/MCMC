@@ -1,0 +1,187 @@
+---
+title: "Examen final MCMC"
+author: "Zhang Shurong"
+date: "08/04/2021"
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+---
+
+Ex1:
+Cet algorithme nous permet de simuler les $x$ puis tracer l'histogramme et les focntions de repartitions et empiriques
+```{r}
+nsim=10
+x0=3
+x=rep(3,nsim)#simuler les variables de x suit la loi exp
+for(i in 2 : nsim)
+  x[i]=(5*x[i-1]+7) %% 200
+
+x=2*(x/200)-1
+summary(x)
+
+hist(x,col="blue",freq=FALSE)#afficher l'histogramme
+x.sort=sort(x)#trier des x
+lines(x.sort,dunif(x.sort,-1,1),col="red")
+cdf.x=ecdf(x)#fonction de repartition empirique
+plot(cdf.x,col="blue",main="Fonction de reparition empirique et theorique")
+x.theo=seq(from=min(x),to=max(x),by=0.001)
+cdf.theo=punif(x.theo)#fonction de repartition theorique
+lines(x.theo,cdf.theo,col="red",lty=2)
+
+ks.test(x,punif,-1,1)#test de kolmogorov smirnov
+#On peut constater que le p-valeur est 0.8>0.05, donc on ne rejette pas l'hypothese H0>.
+```
+
+Ex2:
+Cet algorithme nous permet de calculer l'integrale double.
+```{r}
+h=function(a){
+  x=runif(a)#suit la loi uniforme de taille a entre 0 et 1
+  y=runif(a)
+  sum(exp((x+y)^2))/a}
+
+h2=function(m,a){
+  b=NULL#creaton d'un vecteur null
+  for (i in 1:m){
+    b[i]=h(a)#remplir les valeurs h(a) dans ce vecteur
+  }
+  b
+}
+res=h2(50,500)#test
+res
+
+```
+Les resultats ici sont les resultats de l'integrales double.
+
+
+Ex3:
+Cet algorithme nous permet de trouver la solution minimale et tracer la distribution de x
+```{r}
+ff=function(x){
+  t1=sin(100/x)
+  t2=exp(-(x-1)^2)
+  t3=t1*t2}
+
+dom=seq(1e-2,4,by=0.0001)
+ff.v=ff(dom)
+plot(dom,ff.v,xlab="Function",ylab="",type="l",col="blue")
+
+# optimisation numerique
+pos=which(ff.v==min(ff.v))
+x.opt = dom[pos]
+x.opt#la solution minimale
+
+#construire un recuit simule base sur l'algorithme MH et etudier la dependance de la solution en fonction du schema de refroidissement
+
+
+```
+
+
+Ex4:
+Cet algorithme permet d'etudier la simulation de $x$, le test KS,les figures de foncton de repartitions theorique empirque....
+```{r}
+nn=10^3
+uu=runif(nn)#simlation de loi uniforme
+ss=2
+mu=1
+xx=mu-ss*log((1/uu)-1)#expression qu'on a trouve au question a)
+
+hist(xx,col="blue",freq=FALSE)#tracer l'histogramme
+x.sort=sort(xx)#trier les x
+lines(x.sort,dlogis(x.sort,1,2),col="red")#affiche la fonction de la densite de la loi logistic qui est superpose avec l'histogramme
+cdf.x=ecdf(xx)#calcul la fonction de repartition empirique 
+plot(cdf.x,col="blue",main="Fonction de reparition empirique et theorique")
+x.theo=seq(from=min(xx),to=max(xx),by=0.001)
+cdf.theo=plogis(x.theo,1,2)#calcul la fonction de repartition theorique avec cdf.theo
+lines(x.theo,cdf.theo,col="red",lty=2)#affiche la fonction de repartition theorique qui est superpose avec la fonction de reparition empirique
+#on voit bien qu'il y aura quelques difficulite parce qu'on genere peu de valeurs dans la distribution
+
+ks.test(xx,rlogis,1,2)
+#comme p-valeur est tres petit(<0.05 ou 0.01), on rejette l'hypothese nulle,les valeurs simules a priori ne passent pas le test de KS
+
+xx.test=rlogis(nn,1,2)
+#simulant le loi de logistic avec parametre 1,2
+
+ks.test(xx,xx.test)
+#un test avec ces valeurs et les valeurs simulees
+#Come p-valeur est 0.7944>0.05, on ne rejette pas l'hypothese nulle
+#la simulation des variables de logistic est un peu plus delicate
+
+```
+
+
+
+On peut constater que la fonction de repartition empirique et theorique sont vraiment proches.
+
+Algorithme de Metropolis-Hastings:
+```{r}
+q.prop = function (x)
+{
+ delta=5;
+ y=rnorm(1,x,delta);
+ y;
+}
+q.density = function (x,y)
+{
+ delta=5;
+ res=dnorm(y,3,delta);
+ res;
+}
+
+p.density = function (y)
+{
+  res=dunif(y,0,1) #car pi(x)=pi(y)=1/41
+}
+
+algo.mh = function(x0,n)
+{
+ x=x0;
+ for(i in 1:n)
+   {
+     y=q.prop(x);
+     a.ratio=(p.density(y)*q.density(y,x))/(p.density(x)*q.density(x,y));
+     u=runif(1,0,1);
+     if(u<=a.ratio){ x=y; }     
+   }
+ x;
+}
+
+
+
+x0=1;
+m=100;
+n=1000;
+x=1:n;
+for (i in 1:n)
+{
+  x[i]=algo.mh(x0,m);
+  x0=x[i];
+}
+x
+
+plot(x,type="l",col="blue")
+title("Echantillons Metropolis-Hastings")
+hist(x,proba=T,col="blue")
+x.theo=seq(min(x),max(x),by=0.01)
+lines(x.theo,dunif(x.theo,0,1),col="red")
+acf(x,lag=50)
+mx=cumsum(x)/(1:length(x))
+vx=1:length(x)
+vx[1]=0
+for(i in 2 : length(vx))
+   { vx[i]=var(x[1:i]) }
+stdx=sqrt(vx)
+aa=0.05
+tt=1-(0.5*aa)
+kk=length(x)-1
+  
+intinf=mx-(stdx/sqrt(1:length(x)))*qt(tt,kk)
+intsup=mx+(stdx/sqrt(1:length(x)))*qt(tt,kk)
+plot(mx,type="l",col="blue")
+abline(h=2.5,lty=2,col="red")
+lines(intinf,lty=2,col="green")
+lines(intsup,lty=2,col="green")
+title("Intervalles de confiance")
+```
+
